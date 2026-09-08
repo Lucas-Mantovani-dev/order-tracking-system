@@ -1,18 +1,31 @@
-data = [
-    12,
-    34,
-    56,
-    78,
-    90,
-    "2026-09-03 19:51:07"
-]
+import sqlite3
+from nicegui import ui
+from datetime import datetime, date, timedelta
+conn = sqlite3.connect("system.db")
+cursor = conn.cursor()
 
-old_date = data[5][0:10]
+request = "Tomorrow"
 
-from datetime import datetime
-date_obj = datetime.strptime(old_date, "%Y-%m-%d")
-new_date = date_obj.strftime("%d/%m/%Y")
+if request == "Today" or request == "Tomorrow":
+    if request == "Today":
+        date_val = datetime.now()
+        date_val = date_val.strftime("%Y-%m-%d")
+    elif request == "Tomorrow":
+        date_val = (date.today() + timedelta(days=1)).isoformat()
 
-date_time = new_date + data[5][10::]
+    cursor.execute(
+    """SELECT
+    o.order_number,
+    o.cust_name,
+    o.suburb,
+    o.delivery_date,
+    oto.assign_to
+    FROM orders AS o
+    INNER JOIN track_orders AS oto
+    ON o.order_number = oto.order_number
+    WHERE o.delivery_date = ?""", (date_val,)
+    )
 
-print(date_time)
+    data = cursor.fetchall()
+
+    print(data)

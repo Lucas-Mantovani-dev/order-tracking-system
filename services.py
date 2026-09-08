@@ -20,11 +20,21 @@ def record_log(order_number: int, action_perf: str, perf_by: int, perf_to=None):
         )
     conn.commit()
 
-def request_dborders():
+def request_dborders(request):
+    from datetime import datetime, date, timedelta
     conn = sqlite3.connect("system.db")
     cursor = conn.cursor()
 
-    cursor.execute(
+    search = f"%{request.filter_search}%"
+
+    if request.filter_date == "Today" or request.filter_date == "Tomorrow":
+        if request.filter_date == "Today":
+            date_val = datetime.now()
+            date_val = date_val.strftime("%Y-%m-%d")
+        elif request.filter_date == "Tomorrow":
+            date_val = (date.today() + timedelta(days=1)).isoformat()
+
+        cursor.execute(
         """SELECT
         o.order_number,
         o.cust_name,
@@ -33,8 +43,48 @@ def request_dborders():
         oto.assign_to
         FROM orders AS o
         INNER JOIN track_orders AS oto
-        ON o.order_number = oto.order_number"""
-    )
+        ON o.order_number = oto.order_number
+        WHERE o.delivery_date = ? AND (
+        CAST(o.order_number as TEXT) LIKE ?
+        OR o.cust_name LIKE ?
+        OR o.suburb LIKE ?)""", (date_val, search, search, search)
+        )
+
+    elif request.filter_date == "Newest":
+        cursor.execute(
+        """SELECT
+        o.order_number,
+        o.cust_name,
+        o.suburb,
+        o.delivery_date,
+        oto.assign_to
+        FROM orders AS o
+        INNER JOIN track_orders AS oto
+        ON o.order_number = oto.order_number
+        WHERE (
+        CAST(o.order_number as TEXT) LIKE ?
+        OR o.cust_name LIKE ?
+        OR o.suburb LIKE ?)
+        ORDER BY o.delivery_date DESC""", (search, search, search)
+        )
+
+    elif request.filter_date == "Oldest":
+        cursor.execute(
+        """SELECT
+        o.order_number,
+        o.cust_name,
+        o.suburb,
+        o.delivery_date,
+        oto.assign_to
+        FROM orders AS o
+        INNER JOIN track_orders AS oto
+        ON o.order_number = oto.order_number
+        WHERE (
+        CAST(o.order_number as TEXT) LIKE ?
+        OR o.cust_name LIKE ?
+        OR o.suburb LIKE ?)
+        ORDER BY o.delivery_date ASC""", (search, search, search)
+        )
 
     orders_received = cursor.fetchall()
 

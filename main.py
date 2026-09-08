@@ -3,9 +3,9 @@ import services, models
 
 app = FastAPI()
 
-@app.get("/request_orders")
-def request_orders():
-    orders = services.request_dborders()
+@app.post("/request_orders")
+def request_orders(request: models.RequestOrders):
+    orders = services.request_dborders(request)
     return orders
 
 @app.post("/add_order")

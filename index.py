@@ -13,8 +13,12 @@ def orders_page():
 
     # GET ALL ORDERS TO DISPLAY ON THE SCREEN
     def request_orders():
-        response = httpx.get(
-            "http://127.0.0.1:8000/request_orders"
+        response = httpx.post(
+            "http://127.0.0.1:8000/request_orders",
+            json= {
+                "filter_date": filter_choice.text,
+                "filter_search": filter_search.value
+            }
         )
         data = response.json()
         return data
@@ -69,45 +73,41 @@ def orders_page():
             ui.button("Create Order", color="#eb1c24", on_click=request_create_order).classes("self-center text-2xl text-white mt-15").style("border-radius: 30px;")
         dialog.open()
 
-    # ADD STAFF FUNCTION/BUTTON
-    def add_staff():
+    # ADD STAFF REQUEST
+    def request_add_staff():
+        response = httpx.post(
+            "http://127.0.0.1:8000/new_staff",
+            json={
+                "fname": fname.value.strip().capitalize(),
+                "lname": lname.value.strip().capitalize(),
+                "department": dpt_dropdown.text
+            }
+        )
+        data = response.json()
 
-        # ADD STAFF REQUEST
-        def request_add_staff():
-            response = httpx.post(
-                "http://127.0.0.1:8000/new_staff",
-                json={
-                    "fname": fname.value.strip().capitalize(),
-                    "lname": lname.value.strip().capitalize(),
-                    "department": dpt_dropdown.text
-                }
-            )
-            data = response.json()
+        if response.status_code != 200:
+            ui.notification(data["detail"], color="red", timeout=1.0)
+        else:
+            ui.notification(data["detail"], color="green", timeout=1.0, on_dismiss=staff_dialog.close)
 
-            if response.status_code != 200:
-                ui.notification(data["detail"], color="red", timeout=1.0)
-            else:
-                ui.notification(data["detail"], color="green", timeout=1.0, on_dismiss=dialog.close())
+    # ADD STAFF DIALOG
+    with ui.dialog() as staff_dialog, ui.card().classes("w-300 h-220").style("max-width: none;"):
+        ui.button(icon="cancel", on_click=staff_dialog.close, color=None).props("flat round dense").style("color: #eb1c24; font-size: 20px;").classes("self-end")
+        ui.label("Add Staff").classes("text-bold self-center text-white mb-15").style("font-size: 30px; background-color: #eb1c24; border-radius: 30px; padding: 15px;")
 
-        # DIALOG POPUP
-        with ui.dialog() as dialog, ui.card().classes("w-300 h-220").style("max-width: none;"):
-            ui.button(icon="cancel", on_click=dialog.close, color=None).props("flat round dense").style("color: #eb1c24; font-size: 20px;").classes("self-end")
-            ui.label("Add Staff").classes("text-bold self-center text-white mb-15").style("font-size: 30px; background-color: #eb1c24; border-radius: 30px; padding: 15px;")
+        # ADD STAFF FORM
+        with ui.row().classes("w-full justify-center items-center"):
+            fname = ui.input("First Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
+            lname = ui.input("Last Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
+        with ui.dropdown_button("Department", auto_close=True, color="#eb1c24").classes(
+            "self-center w-70 h-15 text-white text-xl items-center justify-center"
+        ).style("border-radius: 30px;") as dpt_dropdown:
+            ui.item("Yard", on_click=lambda: dpt_dropdown.set_text("Yard"))
+            ui.item("Sales", on_click=lambda: dpt_dropdown.set_text("Sales"))
+            
+        ui.button("Add Staff", color="#eb1c24", on_click=request_add_staff).classes("self-center text-2xl text-white mt-15").style("border-radius: 30px;")
 
-            # ADD STAFF FORM
-            with ui.row().classes("w-full justify-center items-center"):
-                fname = ui.input("First Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
-                lname = ui.input("Last Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
-            with ui.dropdown_button("Department", auto_close=True, color="#eb1c24").classes(
-                "self-center w-70 h-15 text-white text-xl items-center justify-center"
-            ).style("border-radius: 30px;") as dpt_dropdown:
-                ui.item("Yard", on_click=lambda: dpt_dropdown.set_text("Yard"))
-                ui.item("Sales", on_click=lambda: dpt_dropdown.set_text("Sales"))
-                
-            ui.button("Add Staff", color="#eb1c24", on_click=request_add_staff).classes("self-center text-2xl text-white mt-15").style("border-radius: 30px;")
-
-        dialog.open()
-
+             
     # FUNTION ONCE AN ORDER IS CLICKED
     def order_info(order):
 
@@ -186,7 +186,7 @@ def orders_page():
                                 'action_perf': info[2],
                                 'perf_by': info[3],
                                 'perf_to': info[4],
-                                'act_timestamp': new_date + info[5][10::]
+                                'act_timestamp': f"{new_date} — {info[5][10::]}"
                             }
                             info_rows.append(new_row)
 
@@ -243,6 +243,14 @@ def orders_page():
                             ui.label(order[4]).classes("text-lg")
                             ui.label(order[3]).classes("text-lg")
 
+    def filter_apply():
+        main_fbtn.close()
+        content_row.refresh()
+
+    def reset_filter():
+        filter_search.set_value("")
+        filter_apply()
+
     ui.query(".nicegui-content").classes("p-0")
 
     # FULL PAGE IN A COLUMN
@@ -254,7 +262,7 @@ def orders_page():
             # MENU BUTTON
             with ui.button(icon="menu", color="white").classes("mr-auto").props("flat round dense").style("color: #eb1c24; font-size: 25px;"):
                 with ui.menu() as menu:
-                    with ui.menu_item(on_click=add_staff).classes("gap-2 items-center justify-center p-2 text-bold"):
+                    with ui.menu_item(on_click=staff_dialog.open).classes("gap-2 items-center justify-center p-2 text-bold"):
                         ui.icon("person").classes("text-xl")
                         ui.label("Add staff")
 
@@ -269,7 +277,22 @@ def orders_page():
 
             # ROW  FOR THE NAV BUTTONS
             with ui.row().classes("w-full justify-end items-center"):
-                ui.button(icon="search", color=None).props("flat round dense").style("color: #eb1c24; font-size: 30px;")
+                with ui.dropdown_button("Filter", icon="filter_list", color="#eb1c24").props("rounded").classes("w-70 text-white").style(
+                    """font-size: 20px;"""
+                ) as main_fbtn:
+                    with ui.column().classes("w-full items-center justify-center gap-7 p-5"):
+                        with ui.dropdown_button("Today", auto_close=True).props("rounded flat").classes("w-50 text-lg text-black").style("border: 2px solid #eb1c24") as filter_choice:
+                            ui.item("Today", on_click=lambda selected_item: filter_choice.set_text("Today"))
+                            ui.item("Tomorrow", on_click=lambda selected_item: filter_choice.set_text("Tomorrow"))
+                            ui.item("Newest", on_click=lambda selected_item: filter_choice.set_text("Newest"))
+                            ui.item("Oldest", on_click=lambda selected_item: filter_choice.set_text("Oldest"))
+
+                        filter_search = ui.input("Search").props("outlined rounded").classes("h-15 w-full text-xl")
+
+                        with ui.row():
+                            ui.button("Apply", on_click=filter_apply, color="#eb1c24").props("rounded").classes("text-white").style("font-size: 15px;")
+                            ui.button("Reset", on_click=reset_filter).props("rounded flat").classes("text-black").style("font-size: 15px; border: solid 2px black;")
+
                 ui.button(icon="add_circle", color=None, on_click=add_order).props("flat round dense").style("color: #eb1c24; font-size: 30px;")
 
             # ROW FOR THE ORDERS

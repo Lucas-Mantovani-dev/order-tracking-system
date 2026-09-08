@@ -18,4 +18,8 @@ class UpdateTrack(BaseModel):
 
 class RequestInfo(BaseModel):
     order_number: int
+
+class RequestOrders(BaseModel):
+    filter_date: str
+    filter_search: str
     
