@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException
-import services, models
+from fastapi import FastAPI, HTTPException, Response
+import services, models, secrets
 
 app = FastAPI()
 
@@ -44,3 +44,17 @@ def update_track(request: models.UpdateTrack):
 def order_info(request: models.RequestInfo):
     data = services.order_info(request.order_number)
     return data
+
+@app.post("/access_login")
+def access_login(request: models.LoginAccess, response: Response):
+    result = services.login_val(request)
+
+    session_id = secrets.token_urlsafe(32)
+    services.add_cookie(result, session_id)
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True
+    )
+
+    return result[1]

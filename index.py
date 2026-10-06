@@ -4,8 +4,29 @@ from datetime import date, timedelta
 
 # HOME PAGE
 @ui.page("/")
-def home_page():
-    ui.navigate.to("/orders")
+def login_page():
+    def access_login():
+        response = httpx.post(
+            "http://127.0.0.1:8000/access_login",
+            json= {
+                "user_id": int(user_id.value),
+                "user_pw": user_pw.value
+            }
+        )
+        data = response.json()
+
+        if response.status_code != 200:
+            ui.notification(f"{response.status_code} - {data["detail"]}", color="red", timeout=2)
+        else:
+            ui.notification(f"Welcome in {response.text}", color="green", timeout=2)
+
+    ui.query(".nicegui-content").classes("p-0 h-screen w-full items-center justify-center")
+    with ui.card().props("flat"):
+        with ui.column().classes("items-center justify-center"):
+            ui.image("assets/hardwarengeneral_logo.jpg").style("border-radius: 30px;").classes("w-40 mb-10")
+            user_id = ui.input("Employee ID:").props("outlined rounded").classes("h-15 w-50 text-xl")
+            user_pw = ui.input("Password:", password=True, password_toggle_button=True).props("outlined rounded").classes("h-15 w-50 text-xl")
+            ui.button("Login", color="#eb1c24", on_click=access_login).classes("w-50 text-xl text-white mt-10").style("border-radius: 30px;")
 
 # CONTENT PAGE
 @ui.page("/orders")
@@ -75,12 +96,19 @@ def orders_page():
 
     # ADD STAFF REQUEST
     def request_add_staff():
+        import bcrypt
+        attp_pw = user_pw.value.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hash_pw = bcrypt.hashpw(attp_pw, salt)
+        print(attp_pw, hash_pw)
+
         response = httpx.post(
             "http://127.0.0.1:8000/new_staff",
             json={
                 "fname": fname.value.strip().capitalize(),
                 "lname": lname.value.strip().capitalize(),
-                "department": dpt_dropdown.text
+                "department": dpt_dropdown.text,
+                "hash_pw": hash_pw.decode()
             }
         )
         data = response.json()
@@ -99,6 +127,7 @@ def orders_page():
         with ui.row().classes("w-full justify-center items-center"):
             fname = ui.input("First Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
             lname = ui.input("Last Name:").props("outlined rounded").classes("h-15 w-100 text-xl")
+            user_pw = ui.input("Password:", password=True, password_toggle_button=True).props("outlined rounded").classes("h-15 w-100 text-xl")
         with ui.dropdown_button("Department", auto_close=True, color="#eb1c24").classes(
             "self-center w-70 h-15 text-white text-xl items-center justify-center"
         ).style("border-radius: 30px;") as dpt_dropdown:

@@ -177,14 +177,14 @@ def adding_new_staff(request):
 
     if request.department == "Yard":
         cursor.execute(
-            """INSERT INTO yard_staff (fname, lname)
-            VALUES (?, ?)""", (request.fname, request.lname)
+            """INSERT INTO yard_staff (fname, lname, pw_hash)
+            VALUES (?, ?, ?)""", (request.fname, request.lname, request.hash_pw)
         )
 
     elif request.department == "Sales":
         cursor.execute(
-            """INSERT INTO sales_employees (fname, lname)
-            VALUES (?, ?)""", (request.fname, request.lname)
+            """INSERT INTO sales_employees (fname, lname, pw_hash)
+            VALUES (?, ?, ?)""", (request.fname, request.lname, request.hash_pw)
         )
 
     else:
@@ -242,3 +242,41 @@ def order_info(order_number):
         info[3] = f"{sales_info[1]} {sales_info[2]}"
 
     return data
+
+def login_val(request):
+    import bcrypt
+    conn = sqlite3.connect("system.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM sales_employees WHERE sales_rep = ?", (request.user_id,))
+    result = cursor.fetchone()
+    if result:
+        if bcrypt.checkpw(request.user_pw.encode("utf-8"), result[3].encode("utf-8")):
+            return result
+
+    cursor.execute("SELECT * FROM yard_staff WHERE yard_id = ?", (request.user_id,))
+    result = cursor.fetchone()
+    if result:
+        if bcrypt.checkpw(request.user_pw.encode("utf-8"), result[3].encode("utf-8")):
+            return result
+        else:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid ID or password!"
+            )
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid ID or password!"
+        )
+
+def add_cookie(result, session_id):
+    conn = sqlite3.connect("system.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """INSERT INTO sessions (session_id, user_id)
+        VALUES (?, ?)""", (session_id, result[0])
+    )
+    conn.commit()
+    

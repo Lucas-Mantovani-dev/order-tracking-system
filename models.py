@@ -11,6 +11,7 @@ class NewStaff(BaseModel):
     fname: str
     lname: str
     department: str
+    hash_pw: str
 
 class UpdateTrack(BaseModel):
     order_number: int
@@ -22,4 +23,7 @@ class RequestInfo(BaseModel):
 class RequestOrders(BaseModel):
     filter_date: str
     filter_search: str
-    
+
+class LoginAccess(BaseModel):
+    user_id: int
+    user_pw: str
